@@ -287,6 +287,11 @@ def register():
   c.commit();c.close();
   return jsonify({"message":"Registered"}),201
 
+@app.route("/api/refresh",methods=["post"])
+def refresh():
+  d= request.get_json()
+  return jsonify({"message":"Refresh endpoint working"}),200
+
 
 
   
