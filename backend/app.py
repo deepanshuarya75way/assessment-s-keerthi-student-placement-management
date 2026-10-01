@@ -2,12 +2,19 @@ from flask import Flask, jsonify, request, send_from_directory
 from pathlib import Path
 import sqlite3
 from datetime import datetime
+import time
+from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
+from werkzeug.security import generate_password_hash, check_password_hash
+
 
 BASE = Path(__file__).resolve().parent
 DB = BASE / "placementpro.db"
 FRONT = BASE.parent / "frontend"
 
 app = Flask(__name__, static_folder=str(FRONT), static_url_path="/static")
+AUTH_SECRET = "placementpro-secret-key-2026"
+access_serializer = URLSafeTimedSerializer(AUTH_SECRET)
+refresh_serializer = URLSafeTimedSerializer(AUTH_SECRET)
 
 def conn():
     c = sqlite3.connect(DB)
@@ -38,6 +45,12 @@ def init_db():
       id INTEGER PRIMARY KEY AUTOINCREMENT,student_id INTEGER,company_id INTEGER,
       role TEXT,ctc TEXT,joining_date TEXT,status TEXT DEFAULT 'Offer Released',
       FOREIGN KEY(student_id) REFERENCES students(id),FOREIGN KEY(company_id) REFERENCES companies(id));
+    CREATE TABLE IF NOT EXISTS users(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,username TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL,created_at TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS refresh_tokens(
+      id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL,token_hash TEXT UNIQUE NOT NULL, expires_at INTEGER NOT NULL,
+      revoked INTEGER DEFAULT 0,created_at TEXT NOT NULL,
+      FOREIGN KEY (user_id) REFERENCES users(id));
     """)
     c.commit(); c.close()
 
@@ -265,6 +278,19 @@ def seed_demo():
 
 init_db()
 seed_demo()
+@app.route("/api/register",methods=["post"])
+def register():
+  d=request.get_json() or {}; c=conn()
+  
+  c.execute("INSERT INTO users(username,password-hash,created_at)VALUES(?,?,?)",
+  (d["uaername"],generate_password_hash(d["password"]),str(datetime.now())))
+  c.commit();c.close();
+  return jsonify({"message":"Registered"}),201
+
+
+
+  
+
 
 if __name__=="__main__":
     print("PlacementPro is running at http://127.0.0.1:5000")
